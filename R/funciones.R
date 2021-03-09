@@ -65,7 +65,7 @@ medianIQR <- function(x,digits=2,probs=c(0.25,0.75),roundFrom=30,na.rm=TRUE){
 #' nPctBin01(rbinom(100,1,0.4))
 #' nPctBin01(sample(c(0,1),50,replace=TRUE))
 nPctBin01 <- function(x,digits=1){
-  if (!all(x%in%c(0,1))) stop(paste(deparse(substitute(x)),"is not a binary (0,1) variable"))
+  if (!all(x%in%c(0,1,NA))) stop(paste(deparse(substitute(x)),"is not a binary (0,1) variable"))
   format <- paste("%d (%.",digits,"f%%)",sep="")
   n1 <- sum(x,na.rm=TRUE)
   n <- length(na.omit(x))
@@ -185,8 +185,11 @@ chisq_pval <- function(y, g, pvdigits=4){
   if (nrow(tb)==1) p <- NA else{
     me <- suppressWarnings(min(chisq.test(tb)$expected))
     p <- if (me>5) chisq.test(tb,correct=FALSE)$p.value else{
-      if (nrow(tb)==2) fisher.test(tb)$p.value else
-        fisher.test(tb,simulate.p.value=TRUE,B=1e5)$p.value
+      if (nrow(tb)==2)
+        tryCatch(fisher.test(tb)$p.value,
+                 error=function(e)
+                   fisher.test(tb,simulate.p.value=TRUE,B=1e5)$p.value) else
+                     fisher.test(tb,simulate.p.value=TRUE,B=1e5)$p.value
     }
   }
   formatPval(p, pvdigits)
@@ -209,8 +212,8 @@ chisq_pval <- function(y, g, pvdigits=4){
 #' @return A table with the overall mean±sd of the variables and, if a grouping
 #' variable is specified, the means±sd by group and the p-value of the anova test for
 #' comparing means.
-#' @importFrom magrittr %>%
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select enquo
+#' @importFrom tidyr pivot_wider pivot_longer
 #' @export report_meanSd
 #'
 #' @examples
@@ -222,7 +225,7 @@ chisq_pval <- function(y, g, pvdigits=4){
 report_meanSd <- function(data, summary_vars, groupVar=NULL, digits=2, pvdigits=4, na.rm=TRUE) {
   if(rlang::quo_is_null(enquo(groupVar))){
     data %>%
-      tidyr::pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
+      pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
       group_by(Variable) %>%
       summarize(`mean ± sd`=meanSd(value, digits=digits, na.rm=na.rm))
   } else{
@@ -232,14 +235,14 @@ report_meanSd <- function(data, summary_vars, groupVar=NULL, digits=2, pvdigits=
       add_row(summarize(.,n=sum(n)),.before=1) %>%
       pull(n)
     data <- data %>%
-      tidyr::pivot_longer({{summary_vars}},names_to="Variable",values_to="value")
+      pivot_longer({{summary_vars}},names_to="Variable",values_to="value")
     overall <- data %>%
       group_by(Variable) %>%
       summarize(Overall=meanSd(value, digits=digits, na.rm=na.rm))
     perGroup <- data %>%
       group_by(Variable,{{groupVar}}) %>%
       summarize(value=meanSd(value, digits=digits, na.rm=na.rm)) %>%
-      tidyr::pivot_wider(names_from={{groupVar}},values_from=value)
+      pivot_wider(names_from={{groupVar}},values_from=value)
     gvName <- as_label(enquo(groupVar))
     names(perGroup)[-1]=paste(gvName,names(perGroup)[-1],sep="=")
     P <- data %>%
@@ -271,8 +274,8 @@ report_meanSd <- function(data, summary_vars, groupVar=NULL, digits=2, pvdigits=
 #' @return A table with the overall median and quartiles of the variables and, if a grouping
 #' variable is specified, the medians and quartiles by group and the p-value of the kruskal test for
 #' comparing location parameters.
-#' @importFrom magrittr %>%
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select enquo
+#' @importFrom tidyr pivot_wider pivot_longer
 #' @export report_medianIQR
 #'
 #' @examples
@@ -285,7 +288,7 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
                              probs=c(0.25,0.75), pvdigits=4, na.rm=TRUE){
   if(rlang::quo_is_null(enquo(groupVar))){
     data %>%
-      tidyr::pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
+      pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
       group_by(Variable) %>%
       summarize(`median (IQR)`= medianIQR(value, digits=digits, probs=probs,
                                           roundFrom=roundFrom, na.rm=na.rm))
@@ -296,7 +299,7 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
       add_row(summarize(.,n=sum(n)),.before=1) %>%
       pull(n)
     data <- data %>%
-      tidyr::pivot_longer({{summary_vars}},names_to="Variable",values_to="value")
+      pivot_longer({{summary_vars}},names_to="Variable",values_to="value")
     overall <- data %>%
       group_by(Variable) %>%
       summarize(Overall=medianIQR(value, digits=digits, probs=probs,
@@ -305,7 +308,7 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
       group_by(Variable,{{groupVar}}) %>%
       summarize(value=medianIQR(value, digits=digits, probs=probs,
                                 roundFrom=roundFrom, na.rm=na.rm)) %>%
-      tidyr::pivot_wider(names_from={{groupVar}},values_from=value)
+      pivot_wider(names_from={{groupVar}},values_from=value)
     gvName <- as_label(enquo(groupVar))
     names(perGroup)[-1]=paste(gvName,names(perGroup)[-1],sep="=")
     P <- data %>%
@@ -345,8 +348,8 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
 #' @return A table with the overall median and quartiles of the variables and, if a grouping
 #' variable is specified, the medians and quartiles by group and the p-value of the kruskal test for
 #' comparing location parameters.
-#' @importFrom magrittr %>%
 #' @importFrom dplyr filter summarize pull bind_rows across enquo
+#' @importFrom tidyr pivot_longer
 #' @export report_continuous
 #'
 #' @examples
@@ -356,9 +359,9 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
 #' df %>%
 #' report_continuous(c(x,y,z), groupVar=g, digits=1)
 report_continuous <- function(data, summary_vars, groupVar=NULL, digits=2, probs=c(0.25,0.75),
-                         pvdigits=4, alpha=0.05, na.rm=TRUE) {
+                              pvdigits=4, alpha=0.05, na.rm=TRUE) {
   normalTest <- data %>% summarize(across({{summary_vars}},~isNormal(.,alpha=alpha))) %>%
-    tidyr::pivot_longer(everything(),names_to = "variable",values_to="normal")
+    pivot_longer(everything(),names_to = "variable",values_to="normal")
   normales <- normalTest %>% filter(normal) %>% pull(variable)
   noNormales <- normalTest %>% filter(!normal) %>% pull(variable)
   normalSummary <- NULL
@@ -398,6 +401,7 @@ report_continuous <- function(data, summary_vars, groupVar=NULL, digits=2, probs
 #' and percentages of 1's in each group as well as a chi-squared test for comparing
 #' proportions of 1's between groups.
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select enquo
+#' @importFrom tidyr pivot_wider pivot_longer
 #' @export report_nPctBin01
 #'
 #' @examples
@@ -410,7 +414,7 @@ report_continuous <- function(data, summary_vars, groupVar=NULL, digits=2, probs
 report_nPctBin01 <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4) {
   if(rlang::quo_is_null(enquo(groupVar))){
     data %>%
-      tidyr::pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
+      pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
       group_by(Variable) %>%
       summarize(`n (%)`= nPctBin01(value, digits=digits))
   } else{
@@ -421,14 +425,14 @@ report_nPctBin01 <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigi
       pull(n)
     data <- data %>%
       select({{groupVar}},{{summary_vars}}) %>%
-      tidyr::pivot_longer(-{{groupVar}},names_to="Variable",values_to="value")
+      pivot_longer(-{{groupVar}},names_to="Variable",values_to="value")
     overall <- data %>%
       group_by(Variable) %>%
       summarize(Overall=nPctBin01(value, digits=digits))
     perGroup <- data %>%
       group_by(Variable,{{groupVar}}) %>%
       summarize(value=nPctBin01(value, digits=digits)) %>%
-      tidyr::pivot_wider(names_from={{groupVar}},values_from=value)
+      pivot_wider(names_from={{groupVar}},values_from=value)
     gvName <- as_label(enquo(groupVar))
     names(perGroup)[-1]=paste(gvName,names(perGroup)[-1],sep="=")
     P <- data %>%
@@ -462,8 +466,8 @@ report_nPctBin01 <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigi
 #' the categorical variable and, if a grouping variable is specified, the frequencies
 #' and percentages of the values in each group as well as a chi-squared test for
 #' association between the variable and the grouping variable.
-#' @importFrom magrittr %>%
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select arrange rename ungroup
+#' @importFrom tidyr pivot_wider pivot_longer
 #' @importFrom rlang :=
 #' @export report_nPct
 #'
@@ -506,7 +510,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
     data <- data %>% filter(!is.na({{groupVar}}))
     n <- data %>%
       count({{groupVar}}) %>%
-      add_row(summarise(.,n=sum(n)),.before=1) %>%
+      add_row(summarize(.,n=sum(n)),.before=1) %>%
       pull(n)
     data <- data %>%
       select({{groupVar}},{{summary_vars}}) %>%
@@ -526,7 +530,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
     names(perGroup)[-(1:2)]=paste(gvName,names(perGroup)[-(1:2)],sep="=")
     P <- data %>%
       group_by(Variable) %>%
-      summarize(`P-value`=chisq_pval(value,{{groupVar}},pvdigits=3))
+      summarize(`P-value`=chisq_pval(value,{{groupVar}},pvdigits=pvdigits))
     summaryTable <- suppressMessages(
       full_join(overall,perGroup) %>%
         mutate(`P-value`="") %>%
@@ -540,4 +544,60 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
     names(summaryTable)[-nc] <- paste(names(summaryTable)[-nc],n,sep="\nN =")
     summaryTable %>% ungroup()
   }
+}
+#' Elegant format for report tables
+#'
+#' @param report_data report_data Report table to be formatted.
+#'
+#' @return Table formatted with flextable.
+#' @importFrom dplyr mutate
+#' @importFrom flextable set_header_df merge_h merge_v color theme_booktabs padding fix_border_issues
+#' @export report_format
+#'
+#' @examples
+#' df <- data.frame(x=rbinom(90,3,0.6),y=rbinom(90,4,0.8), z=rbinom(90,5,0.5),
+#' g=sample(c("Yes","No"),90,replace=TRUE))
+#' df %>%
+#' report_nPct(c(x,y,z)) %>% report_format()  # Overall summary of variables x, y and z
+#' df %>%
+#' report_nPct(c(x,y,z), groupVar=g, digits=3) %>% report_format(caption="My report table")
+#'
+
+report_format <- function(report_data, caption=NULL, fontsize=NULL){
+  stopifnot(is.data.frame(report_data), ncol(report_data) > 0)
+  typology <- function(df){ # Function to build elements of table header
+    n <- ncol(df)
+    col_keys <- names(df)
+    grpVar <- strsplit(col_keys[3],"=")[[1]][1]
+    data.frame(
+      col_keys = names(df),
+      what = c(col_keys[1:2],rep(grpVar,n-3),col_keys[n]),
+      values = c(col_keys[1:2],
+                 gsub(paste0(grpVar,"="),"",col_keys[3:(n-1)]),
+                 col_keys[n]),
+      stringsAsFactors = FALSE
+    )
+  }
+  report_data[[1]] <- gsub("[|]","   ",report_data[[1]])
+  blueLines <- grepl("[(]NA[])]",report_data[[1]])
+  valueLines <- grepl("   ",report_data[[1]])
+  nc <- ncol(report_data)
+
+  out <- report_data %>%
+    flextable() %>%
+    {if (nc>3){
+      set_header_df(.,mapping=typology(report_data),key="col_keys") %>%
+        merge_h(part="header") %>%
+        merge_v(j=c(1,2,nc), part="header")
+    } else .} %>%
+    theme_booktabs() %>%
+    {if (nc>=3) color(.,color="red", j=nc, i=~`P-value`<0.05) else .} %>%
+    {if (!is.null(fontsize)) fontsize(.,size=fontsize) else .} %>%
+    {if (nc>5) width(.,j=1:nc,width=c(2,rep(6/(nc-1),nc-1))) else autofit(.)} %>%
+    color(color="blue", j=1:max(2,nc-1), i=blueLines) %>%
+    padding(j=1,i=valueLines,padding.left=30) %>%
+    fix_border_issues() %>%
+    {if (!is.null(caption)) set_caption(.,caption=caption) else .}
+
+  out
 }
