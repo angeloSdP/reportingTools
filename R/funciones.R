@@ -533,10 +533,12 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
       summarize(`P-value`=chisq_pval(value,{{groupVar}},pvdigits=pvdigits))
     summaryTable <- suppressMessages(
       full_join(overall,perGroup) %>%
-        mutate(`P-value`="") %>%
-        full_join(P) %>%
+        mutate(`P-value`=""))
+    summaryTable <- suppressMessages(
+      full_join(P,summaryTable) %>%
         replace(is.na(.), "") %>%
         arrange(Variable) %>%
+        select(1,3:ncol(.),2) %>%
         mutate(Variable=ifelse(value!="",paste("|  ",value), Variable)) %>%
         select(-value)
     )
@@ -551,7 +553,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
 #'
 #' @return Table formatted with flextable.
 #' @importFrom dplyr mutate
-#' @importFrom flextable set_header_df merge_h merge_v color theme_booktabs padding fix_border_issues
+#' @importFrom flextable flextable set_header_df merge_h merge_v color fontsize width theme_booktabs padding fix_border_issues set_caption autofit
 #' @export report_format
 #'
 #' @examples
