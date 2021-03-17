@@ -503,7 +503,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
       summarize(nPct=paste("Overall N =",as.character(sum(n))), value=" ") %>%
       full_join(dt1) %>%
       select(-n)%>%
-      arrange(Variable,value) %>%
+      arrange(Variable) %>%
       mutate(Variable=ifelse(value!=" ",paste("|  ",value), Variable)) %>%
       select(-value)
   } else{
@@ -536,7 +536,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
         mutate(`P-value`="") %>%
         full_join(P) %>%
         replace(is.na(.), "") %>%
-        arrange(Variable,value) %>%
+        arrange(Variable) %>%
         mutate(Variable=ifelse(value!="",paste("|  ",value), Variable)) %>%
         select(-value)
     )
