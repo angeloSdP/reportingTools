@@ -565,41 +565,55 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
 #' report_nPct(c(x,y,z), groupVar=g, digits=3) %>% report_format(caption="My report table")
 #'
 
-report_format <- function(report_data, caption=NULL, fontsize=NULL){
+report_format <- function (report_data, caption = NULL, fontsize = NULL)
+{
   stopifnot(is.data.frame(report_data), ncol(report_data) > 0)
-  typology <- function(df){ # Function to build elements of table header
+  typology <- function(df) {
     n <- ncol(df)
     col_keys <- names(df)
-    grpVar <- strsplit(col_keys[3],"=")[[1]][1]
-    data.frame(
-      col_keys = names(df),
-      what = c(col_keys[1:2],rep(grpVar,n-3),col_keys[n]),
-      values = c(col_keys[1:2],
-                 gsub(paste0(grpVar,"="),"",col_keys[3:(n-1)]),
-                 col_keys[n]),
-      stringsAsFactors = FALSE
-    )
+    grpVar <- strsplit(col_keys[3], "=")[[1]][1]
+    if (has_pValue)
+      data.frame(col_keys = names(df),
+                 what = c(col_keys[1:2], rep(grpVar, n - 3), col_keys[n]),
+                 values = c(col_keys[1:2], gsub(paste0(grpVar, "="), "", col_keys[3:(n - 1)]),
+                            col_keys[n]), stringsAsFactors = FALSE) else
+                              data.frame(col_keys = names(df),
+                                         what = c(col_keys[1:2], rep(grpVar, n - 2)),
+                                         values = c(col_keys[1:2], gsub(paste0(grpVar, "="), "", col_keys[3:n])),
+                                         stringsAsFactors = FALSE)
   }
-  report_data[[1]] <- gsub("[|]","   ",report_data[[1]])
-  blueLines <- grepl("[(]NA[])]",report_data[[1]])
-  valueLines <- grepl("   ",report_data[[1]])
   nc <- ncol(report_data)
-
-  out <- report_data %>%
-    flextable() %>%
-    {if (nc>3){
-      set_header_df(.,mapping=typology(report_data),key="col_keys") %>%
-        merge_h(part="header") %>%
-        merge_v(j=c(1,2,nc), part="header")
-    } else .} %>%
-    theme_booktabs() %>%
-    {if (nc>=3) color(.,color="red", j=nc, i=~`P-value`<0.05) else .} %>%
-    {if (!is.null(fontsize)) fontsize(.,size=fontsize) else .} %>%
-    {if (nc>5) width(.,j=1:nc,width=c(2,rep(6/(nc-1),nc-1))) else autofit(.)} %>%
-    color(color="blue", j=1:max(2,nc-1), i=blueLines) %>%
-    padding(j=1,i=valueLines,padding.left=30) %>%
-    fix_border_issues() %>%
-    {if (!is.null(caption)) set_caption(.,caption=caption) else .}
-
+  has_pValue=names(report_data)[nc]=="P-value"
+  report_data[[1]] <- gsub("[|]", "   ", report_data[[1]])
+  blueLines <- grepl("[(]NA[])]", report_data[[1]])
+  valueLines <- grepl("   ", report_data[[1]])
+  out <- report_data %>% flextable() %>% {
+    if (nc > 3) {
+      set_header_df(., mapping = typology(report_data),
+                    key = "col_keys") %>% merge_h(part = "header") %>%
+        merge_v(j = c(1, 2, nc), part = "header")
+    }
+    else .
+  } %>% theme_booktabs() %>% {
+    if (has_pValue)
+      color(., color = "red", j = nc, i = ~`P-value` <
+              0.05)
+    else .
+  } %>% {
+    if (!is.null(fontsize))
+      fontsize(., size = fontsize)
+    else .
+  } %>% {
+    if (nc > 5)
+      width(., j = 1:nc, width = c(2, rep(6/(nc - 1), nc -
+                                            1)))
+    else autofit(.)
+  } %>% color(color = "blue", j = 1:max(2, nc - 1), i = blueLines) %>%
+    padding(j = 1, i = valueLines, padding.left = 30) %>%
+    fix_border_issues() %>% {
+      if (!is.null(caption))
+        set_caption(., caption = caption)
+      else .
+    }
   out
 }
