@@ -375,7 +375,7 @@ report_continuous <- function(data, summary_vars, groupVar=NULL, digits=2, probs
                      pvdigits=pvdigits,na.rm=na.rm)
   if(rlang::quo_is_null(enquo(groupVar))){
     if (!is.null(normalSummary)) names(normalSummary)[2]="Overall"
-    if (!is.null(normalSummary)) names(nonNormalSummary)[2]="Overall"
+    if (!is.null(nonNormalSummary)) names(nonNormalSummary)[2]="Overall"
   }
   bind_rows(normalSummary,nonNormalSummary)
 }
