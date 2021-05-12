@@ -510,7 +510,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
   if(rlang::quo_is_null(enquo(groupVar))){
     dt1 <- data %>%
       pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
-     # mutate(Variable=fct_inorder(Variable)) %>%
+      mutate(Variable=fct_inorder(Variable)) %>%
       filter(if (na.rm) !is.na(value) else TRUE) %>%
       group_by(Variable) %>%
       report_nPct1(value)
@@ -519,7 +519,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
       full_join(dt1) %>%
       select(-n)%>%
       arrange(Variable) %>%
-      mutate(Variable=ifelse(value!=" ",paste("|  ",value), Variable)) %>%
+      mutate(Variable=ifelse(value!=" ",paste("|  ",value), as.character(Variable))) %>%
       select(-value)
   } else{
     data <- data %>% filter(!is.na({{groupVar}}))
@@ -530,7 +530,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
     data <- data %>%
       select({{groupVar}},{{summary_vars}}) %>%
       pivot_longer(-{{groupVar}}, names_to="Variable") %>%
-     # mutate(Variable=fct_inorder(Variable)) %>%
+      mutate(Variable=fct_inorder(Variable)) %>%
       filter(if (na.rm) !is.na(value) else TRUE)
     overall <- data %>%
       group_by(Variable) %>%
@@ -555,7 +555,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
         replace(is.na(.), "") %>%
         arrange(Variable) %>%
         select(1,3:ncol(.),2) %>%
-        mutate(Variable=ifelse(value!="",paste("|  ",value), Variable)) %>%
+        mutate(Variable=ifelse(value!="",paste("|  ",value), as.character(Variable))) %>%
         select(-value)
     )
     nc <- c(1,ncol(summaryTable))
