@@ -163,7 +163,7 @@ aov_pval <- function(y, g, pvdigits=4){
 kruskal_Wilcox_pval <- function(y, g, pvdigits=4){
   ng <- length(unique(g))
   if (ng==2)
-    p=tryCatch(wilcox.test(y~g)$p.value, error=function(e) NA)
+    p=tryCatch(wilcox.test(y~g,exact=FALSE)$p.value, error=function(e) NA)
   else
     p=tryCatch(kruskal.test(y~g)$p.value, error=function(e) NA)
   formatPval(p, pvdigits)
