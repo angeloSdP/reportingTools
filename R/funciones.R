@@ -147,21 +147,25 @@ aov_pval <- function(y, g, pvdigits=4){
   formatPval(p, pvdigits)
 }
 
-#' P-value of Kruskal-Wallis test
+#' P-value of Wilcoxon of Kruskal-Wallis test
 #'
 #' @param y Response variable.
 #' @param g Grouping variable.
 #' @param pvdigits number of digits for the p-value.
 #'
-#' @return p-value of the analysis of the Kruskal-Wallis test kruskal.test(y~g).
+#' @return p-value of Wilcoxon test (when comparing two groups) or Kruskal-Wallis test
+#' (when comparing more than two groups).
 #' @export
 #'
 #' @examples
 #' df <- data.frame(g=gl(3,10),y=runif(30))
-#' kruskal_pval(df$y,df$g,pvdigits=3)
-kruskal_pval <- function(y, g, pvdigits=4){
-  p=tryCatch(kruskal.test(y~g)$p.value,
-             error=function(e) NA)
+#' kruskal_Wilcox_pval(df$y,df$g,pvdigits=3)
+kruskal_Wilcox_pval <- function(y, g, pvdigits=4){
+  ng <- length(unique(g))
+  if (ng==2)
+    p=tryCatch(wilcox.test(y~g)$p.value, error=function(e) NA)
+  else
+    p=tryCatch(kruskal.test(y~g)$p.value, error=function(e) NA)
   formatPval(p, pvdigits)
 }
 
@@ -214,6 +218,7 @@ chisq_pval <- function(y, g, pvdigits=4){
 #' comparing means.
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select enquo
 #' @importFrom tidyr pivot_wider pivot_longer
+#' @importFrom forcats fct_inorder
 #' @export report_meanSd
 #'
 #' @examples
@@ -226,6 +231,7 @@ report_meanSd <- function(data, summary_vars, groupVar=NULL, digits=2, pvdigits=
   if(rlang::quo_is_null(enquo(groupVar))){
     data %>%
       pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
+      mutate(Variable=fct_inorder(Variable)) %>%
       group_by(Variable) %>%
       summarize(`mean ± sd`=meanSd(value, digits=digits, na.rm=na.rm))
   } else{
@@ -235,7 +241,8 @@ report_meanSd <- function(data, summary_vars, groupVar=NULL, digits=2, pvdigits=
       add_row(summarize(.,n=sum(n)),.before=1) %>%
       pull(n)
     data <- data %>%
-      pivot_longer({{summary_vars}},names_to="Variable",values_to="value")
+      pivot_longer({{summary_vars}},names_to="Variable",values_to="value")%>%
+      mutate(Variable=fct_inorder(Variable))
     overall <- data %>%
       group_by(Variable) %>%
       summarize(Overall=meanSd(value, digits=digits, na.rm=na.rm))
@@ -276,6 +283,7 @@ report_meanSd <- function(data, summary_vars, groupVar=NULL, digits=2, pvdigits=
 #' comparing location parameters.
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select enquo
 #' @importFrom tidyr pivot_wider pivot_longer
+#' @importFrom forcats fct_inorder
 #' @export report_medianIQR
 #'
 #' @examples
@@ -289,6 +297,7 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
   if(rlang::quo_is_null(enquo(groupVar))){
     data %>%
       pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
+      mutate(Variable=fct_inorder(Variable)) %>%
       group_by(Variable) %>%
       summarize(`median (IQR)`= medianIQR(value, digits=digits, probs=probs,
                                           roundFrom=roundFrom, na.rm=na.rm))
@@ -299,7 +308,8 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
       add_row(summarize(.,n=sum(n)),.before=1) %>%
       pull(n)
     data <- data %>%
-      pivot_longer({{summary_vars}},names_to="Variable",values_to="value")
+      pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
+      mutate(Variable=fct_inorder(Variable))
     overall <- data %>%
       group_by(Variable) %>%
       summarize(Overall=medianIQR(value, digits=digits, probs=probs,
@@ -313,7 +323,7 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
     names(perGroup)[-1]=paste(gvName,names(perGroup)[-1],sep="=")
     P <- data %>%
       group_by(Variable) %>%
-      summarize(`P-value`=kruskal_pval(value,{{groupVar}}, pvdigits=pvdigits))
+      summarize(`P-value`=kruskal_Wilcox_pval(value,{{groupVar}}, pvdigits=pvdigits))
     summaryTable <- suppressMessages(overall %>% full_join(perGroup) %>% full_join(P))
     nc <- c(1,ncol(summaryTable))
     names(summaryTable)[-nc] <- paste(names(summaryTable)[-nc],n,sep="\nN =")
@@ -402,6 +412,7 @@ report_continuous <- function(data, summary_vars, groupVar=NULL, digits=2, probs
 #' proportions of 1's between groups.
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select enquo
 #' @importFrom tidyr pivot_wider pivot_longer
+#' @importFrom forcats fct_inorder
 #' @export report_nPctBin01
 #'
 #' @examples
@@ -415,6 +426,7 @@ report_nPctBin01 <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigi
   if(rlang::quo_is_null(enquo(groupVar))){
     data %>%
       pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
+      mutate(Variable=fct_inorder(Variable)) %>%
       group_by(Variable) %>%
       summarize(`n (%)`= nPctBin01(value, digits=digits))
   } else{
@@ -425,7 +437,8 @@ report_nPctBin01 <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigi
       pull(n)
     data <- data %>%
       select({{groupVar}},{{summary_vars}}) %>%
-      pivot_longer(-{{groupVar}},names_to="Variable",values_to="value")
+      pivot_longer(-{{groupVar}},names_to="Variable",values_to="value") %>%
+      mutate(Variable=fct_inorder(Variable))
     overall <- data %>%
       group_by(Variable) %>%
       summarize(Overall=nPctBin01(value, digits=digits))
@@ -468,6 +481,7 @@ report_nPctBin01 <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigi
 #' association between the variable and the grouping variable.
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select arrange rename ungroup
 #' @importFrom tidyr pivot_wider pivot_longer
+#' @importFrom forcats fct_inorder
 #' @importFrom rlang :=
 #' @export report_nPct
 #'
@@ -496,6 +510,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
   if(rlang::quo_is_null(enquo(groupVar))){
     dt1 <- data %>%
       pivot_longer({{summary_vars}},names_to="Variable",values_to="value") %>%
+     # mutate(Variable=fct_inorder(Variable)) %>%
       filter(if (na.rm) !is.na(value) else TRUE) %>%
       group_by(Variable) %>%
       report_nPct1(value)
@@ -515,6 +530,7 @@ report_nPct <- function(data, summary_vars, groupVar=NULL, digits=1, pvdigits=4,
     data <- data %>%
       select({{groupVar}},{{summary_vars}}) %>%
       pivot_longer(-{{groupVar}}, names_to="Variable") %>%
+     # mutate(Variable=fct_inorder(Variable)) %>%
       filter(if (na.rm) !is.na(value) else TRUE)
     overall <- data %>%
       group_by(Variable) %>%
