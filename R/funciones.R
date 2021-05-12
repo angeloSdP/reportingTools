@@ -273,14 +273,14 @@ report_meanSd <- function(data, summary_vars, groupVar=NULL, digits=2, pvdigits=
 #' @param summary_vars Variable or variables whose median and quartiles is to be calculated.
 #' @param groupVar Grouping variable.
 #' @param digits Number of decimal digits for the results.
-#' @param pvdigits Number of decimal digits for the p-value of Kruskal test.
+#' @param pvdigits Number of decimal digits for the p-value of the test.
 #' @param roundFrom If median is greater than this value, median and IQR are rounded to zero decimals even if digits>0.
 #' @param probs Pair of quantiles to be computed around the median. Default are q25 and q75.
 #' @param na.rm Should NA values be removed (possible values are TRUE or FALSE)
 #'
 #' @return A table with the overall median and quartiles of the variables and, if a grouping
-#' variable is specified, the medians and quartiles by group and the p-value of the kruskal test for
-#' comparing location parameters.
+#' variable is specified, the medians and quartiles by group and the p-value of the wilcoxon (two groups) or kruskal
+#' (more than two groups) test for comparing location parameters.
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select enquo
 #' @importFrom tidyr pivot_wider pivot_longer
 #' @importFrom forcats fct_inorder

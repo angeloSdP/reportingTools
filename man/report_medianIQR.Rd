@@ -28,14 +28,14 @@ report_medianIQR(
 
 \item{probs}{Pair of quantiles to be computed around the median. Default are q25 and q75.}
 
-\item{pvdigits}{Number of decimal digits for the p-value of Kruskal test.}
+\item{pvdigits}{Number of decimal digits for the p-value of the test.}
 
 \item{na.rm}{Should NA values be removed (possible values are TRUE or FALSE)}
 }
 \value{
 A table with the overall median and quartiles of the variables and, if a grouping
-variable is specified, the medians and quartiles by group and the p-value of the kruskal test for
-comparing location parameters.
+variable is specified, the medians and quartiles by group and the p-value of the wilcoxon (two groups) or kruskal
+(more than two groups) test for comparing location parameters.
 }
 \description{
 report_medianIQR builds a table with the overall medians and (by
