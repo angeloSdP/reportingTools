@@ -135,14 +135,20 @@ formatPval <- function(x, pvdigits=4){
 #' @param g Grouping variable.
 #' @param pvdigits number of digits for the p-value.
 #'
-#' @return p-value of the analysis of variance test aov(y~g).
+#' @return p-value of t-test when comparing two groups or p-value of the analysis
+#' of variance test aov(y~g) when comparing more than two groups. For comparing two
+#' groups t.test is preferred as it allows for different variances in each group.
 #' @export
 #'
 #' @examples
 #' df <- data.frame(g=gl(3,10),y=rnorm(30))
-#' aov_pval(df$y,df$g,pvdigits=3)
-aov_pval <- function(y, g, pvdigits=4){
-  p=tryCatch(summary(aov(y~g))[[1]][["Pr(>F)"]][1],
+#' aov_t_pval(df$y,df$g,pvdigits=3)
+aov_t_pval <- function(y, g, pvdigits=4){
+  ng <- length(unique(g))
+  if (ng==2)
+    p=tryCatch(t.test(y~g)$p.value, error=function(e) NA)
+  else
+    p=tryCatch(summary(aov(y~g))[[1]][["Pr(>F)"]][1],
              error=function(e) NA)
   formatPval(p, pvdigits)
 }
@@ -214,8 +220,10 @@ chisq_pval <- function(y, g, pvdigits=4){
 #' @param na.rm Should NA values be removed (possible values are TRUE or FALSE)
 #'
 #' @return A table with the overall mean±sd of the variables and, if a grouping
-#' variable is specified, the means±sd by group and the p-value of the anova test for
-#' comparing means.
+#' variable is specified, the means±sd by group and the p-value for comparing the
+#' means of the groups, by using t-test when there are two groups (maybe with
+#' different variances), and anova test when there are more than two groups (equal
+#' variances is assumed).
 #' @importFrom dplyr mutate filter group_by count add_row summarize as_label pull full_join select enquo
 #' @importFrom tidyr pivot_wider pivot_longer
 #' @importFrom forcats fct_inorder
@@ -254,7 +262,7 @@ report_meanSd <- function(data, summary_vars, groupVar=NULL, digits=2, pvdigits=
     names(perGroup)[-1]=paste(gvName,names(perGroup)[-1],sep="=")
     P <- data %>%
       group_by(Variable) %>%
-      summarize(`P-value`=aov_pval(value,{{groupVar}},pvdigits=pvdigits))
+      summarize(`P-value`=aov_t_pval(value,{{groupVar}},pvdigits=pvdigits))
     summaryTable <- suppressMessages(overall %>% full_join(perGroup) %>% full_join(P))
     nc <- c(1,ncol(summaryTable))
     names(summaryTable)[-nc] <- paste(names(summaryTable)[-nc],n,sep="\nN =")
@@ -267,8 +275,9 @@ report_meanSd <- function(data, summary_vars, groupVar=NULL, digits=2, pvdigits=
 #' @description report_medianIQR builds a table with the overall medians and (by
 #' default) quartiles 25 and 75 of one or more variables. A grouping variable can also be
 #' specified, in which case medians and quartiles are also calculated for each group and the
-#' p-value of a Kruskal-Wallis test is displayed to test the null hypothesis that the location
-#' parameters of the distribution of the variable are the same in each group.
+#' p-value of a Kruskal-Wallis (more than 2 groups) or Wilcoxon test (two groups) is displayed
+#' to test the null hypothesis that the location parameters of the distribution of the variable
+#' are the same in each group.
 #' @param data data frame or tibble which contains the data.
 #' @param summary_vars Variable or variables whose median and quartiles is to be calculated.
 #' @param groupVar Grouping variable.
