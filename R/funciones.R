@@ -370,8 +370,16 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
 #' report_continuous(c(x,y,z), groupVar=g, digits=1)
 report_continuous <- function(data, summary_vars, groupVar=NULL, digits=2, probs=c(0.25,0.75),
                               pvdigits=4, alpha=0.05, na.rm=TRUE) {
-  normalTest <- data %>% summarize(across({{summary_vars}},~isNormal(.,alpha=alpha))) %>%
-    pivot_longer(everything(),names_to = "variable",values_to="normal")
+  #normalTest <- data %>% summarize(across({{summary_vars}},~isNormal(.,alpha=alpha))) %>%
+  #  pivot_longer(everything(),names_to = "variable",values_to="normal")
+  esNormal <- function(x,g) shapiro.test(residuals(lm(x~g)))$p.value>=0.05
+  normalTest <- data %>% select({{groupVar}},{{summary_vars}}) %>%
+    pivot_longer(-{{groupVar}},names_to = "variable",values_to = "valor") %>%
+    group_by(variable) %>%
+    nest() %>%
+    mutate(normal=map(.x=data,~esNormal(.x$valor,.x$grupo))) %>%
+    unnest(cols=normal) %>%
+    select(-data)
   normales <- normalTest %>% filter(normal) %>% pull(variable)
   noNormales <- normalTest %>% filter(!normal) %>% pull(variable)
   normalSummary <- NULL
