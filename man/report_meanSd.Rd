@@ -28,8 +28,10 @@ report_meanSd(
 }
 \value{
 A table with the overall mean±sd of the variables and, if a grouping
-variable is specified, the means±sd by group and the p-value of the anova test for
-comparing means.
+variable is specified, the means±sd by group and the p-value for comparing the
+means of the groups, by using t-test when there are two groups (maybe with
+different variances), and anova test when there are more than two groups (equal
+variances is assumed).
 }
 \description{
 report_meanSd builds a table with the overall means ±

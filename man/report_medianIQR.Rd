@@ -41,8 +41,9 @@ variable is specified, the medians and quartiles by group and the p-value of the
 report_medianIQR builds a table with the overall medians and (by
 default) quartiles 25 and 75 of one or more variables. A grouping variable can also be
 specified, in which case medians and quartiles are also calculated for each group and the
-p-value of a Kruskal-Wallis test is displayed to test the null hypothesis that the location
-parameters of the distribution of the variable are the same in each group.
+p-value of a Kruskal-Wallis (more than 2 groups) or Wilcoxon test (two groups) is displayed
+to test the null hypothesis that the location parameters of the distribution of the variable
+are the same in each group.
 }
 \examples{
 df <- data.frame(x=rnorm(100,10,3),y=rnorm(100,50,8), z=runif(100,20,30),g=sample(c("Yes","No"),100,replace=TRUE))

@@ -386,7 +386,7 @@ report_continuous <- function(data, summary_vars, groupVar=NULL, digits=2, probs
     pivot_longer(-{{groupVar}},names_to = "variable",values_to = "valor") %>%
     group_by(variable) %>%
     nest() %>%
-    mutate(normal=map(.x=data,~esNormal(.x$valor,.x$grupo))) %>%
+    mutate(normal=map(.x=data,~esNormal(.x$valor,.x[[1]]))) %>%
     unnest(cols=normal) %>%
     select(-data)
   normales <- normalTest %>% filter(normal) %>% pull(variable)
