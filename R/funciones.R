@@ -379,16 +379,25 @@ report_medianIQR <- function(data, summary_vars, groupVar=NULL, digits=2, roundF
 #' report_continuous(c(x,y,z), groupVar=g, digits=1)
 report_continuous <- function(data, summary_vars, groupVar=NULL, digits=2, probs=c(0.25,0.75),
                               pvdigits=4, alpha=0.05, na.rm=TRUE) {
-  #normalTest <- data %>% summarize(across({{summary_vars}},~isNormal(.,alpha=alpha))) %>%
-  #  pivot_longer(everything(),names_to = "variable",values_to="normal")
-  esNormal <- function(x,g) shapiro.test(residuals(lm(x~g)))$p.value>=0.05
-  normalTest <- data %>% select({{groupVar}},{{summary_vars}}) %>%
-    pivot_longer(-{{groupVar}},names_to = "variable",values_to = "valor") %>%
+  groupVar <- rlang::enquo(groupVar)
+  data <- if (rlang::quo_is_null(groupVar)) data %>% mutate(g=1) else
+    data %>% mutate(g=!!groupVar)
+  # Testing for normality in each group and variable. Variable is declared normal
+  # if it is normal in every group
+  normalTest <- data %>% select(g,{{summary_vars}}) %>%
+    pivot_longer(-g,names_to = "variable",values_to = "value") %>%
+    group_by(g,variable) %>%
+    nest() %>%
+    mutate(
+      shapiro_test = map(data, ~ shapiro.test(.x$value)),
+      normal = map_dbl(shapiro_test, ~ .x$p.value)>=0.05
+    ) %>%
+    select(g,variable,normal) %>%
     group_by(variable) %>%
     nest() %>%
-    mutate(normal=map(.x=data,~esNormal(.x$valor,.x[[1]]))) %>%
-    unnest(cols=normal) %>%
-    select(-data)
+    mutate(normal=map_lgl(data,\(x) all(x[["normal"]]))) %>%
+    select(variable,normal) %>%
+    ungroup()
   normales <- normalTest %>% filter(normal) %>% pull(variable)
   noNormales <- normalTest %>% filter(!normal) %>% pull(variable)
   normalSummary <- NULL
